@@ -161,7 +161,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.compress_rounded,
                     label: 'Сжать',
-                    onTap: () => _onCompress(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onCompress(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -169,7 +169,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.transform_rounded,
                     label: 'Конвертировать',
-                    onTap: () => _onConvert(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onConvert(context),
                   ),
                 ),
               ],
@@ -181,7 +181,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.aspect_ratio_rounded,
                     label: 'Размер',
-                    onTap: () => _onResize(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onResize(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -189,7 +189,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.rotate_right_rounded,
                     label: 'Повернуть',
-                    onTap: () => _onRotate(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onRotate(context),
                   ),
                 ),
               ],
@@ -201,7 +201,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.flip_rounded,
                     label: 'Отразить',
-                    onTap: () => _onFlip(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onFlip(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -209,7 +209,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.crop_rounded,
                     label: 'Обрезать',
-                    onTap: () => _onCrop(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onCrop(context),
                   ),
                 ),
               ],
@@ -221,7 +221,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.filter_rounded,
                     label: 'Фильтры',
-                    onTap: () => _onFilters(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onFilters(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -229,7 +229,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.auto_fix_high_rounded,
                     label: 'Редактор',
-                    onTap: () => _onEditor(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onEditor(context),
                   ),
                 ),
               ],
@@ -241,7 +241,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.zoom_in_rounded,
                     label: 'Увеличить',
-                    onTap: () => _onUpscale(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onUpscale(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -249,7 +249,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.auto_awesome_rounded,
                     label: 'Улучшить качество',
-                    onTap: () => _onSharpen(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onSharpen(context),
                   ),
                 ),
               ],
@@ -261,7 +261,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.blur_on_rounded,
                     label: 'Размытие',
-                    onTap: () => _onBlur(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onBlur(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -269,7 +269,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.blur_off_rounded,
                     label: 'Убрать размытие',
-                    onTap: () => _onSharpen(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onSharpen(context),
                   ),
                 ),
               ],
@@ -281,7 +281,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.branding_watermark_rounded,
                     label: 'Водяной знак',
-                    onTap: () => _onWatermark(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onWatermark(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -301,7 +301,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.face_rounded,
                     label: 'Размытие лиц',
-                    onTap: () => _onFaceBlur(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onFaceBlur(context),
                   ),
                 ),
                 const SizedBox(width: AppTheme.blockGap),
@@ -309,7 +309,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.layers_clear_rounded,
                     label: 'Удалить фон',
-                    onTap: () => _onRemoveBackground(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onRemoveBackground(context),
                   ),
                 ),
               ],
@@ -321,7 +321,7 @@ class _HomePageState extends State<HomePage> {
                   child: _ActionButton(
                     icon: Icons.draw_rounded,
                     label: 'Рисовать',
-                    onTap: () => _onDrawOnPhoto(context, dropped: _droppedFiles, picked: _pickedFiles),
+                    onTap: () => _onDrawOnPhoto(context),
                   ),
                 ),
               ],
@@ -500,283 +500,47 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _onCompress(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CompressPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
+  ActionPageArgs get _actionPageArgs => ActionPageArgs(
+        dropped: _droppedFiles,
+        picked: _pickedFiles,
+        dropzoneController: _dropzoneController,
+      );
+
+  void _pushPage(BuildContext context, Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
-  void _onConvert(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ConvertPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onCompress(BuildContext context) => _pushPage(context, CompressPage(args: _actionPageArgs));
 
-  void _onResize(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ResizePage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onConvert(BuildContext context) => _pushPage(context, ConvertPage(args: _actionPageArgs));
 
-  void _onRotate(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => RotatePage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onResize(BuildContext context) => _pushPage(context, ResizePage(args: _actionPageArgs));
 
-  void _onFlip(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => FlipPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onRotate(BuildContext context) => _pushPage(context, RotatePage(args: _actionPageArgs));
 
-  void _onCrop(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CropPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onFlip(BuildContext context) => _pushPage(context, FlipPage(args: _actionPageArgs));
 
-  void _onFilters(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => FiltersPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onCrop(BuildContext context) => _pushPage(context, CropPage(args: _actionPageArgs));
 
-  void _onEditor(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => EditorPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onFilters(BuildContext context) => _pushPage(context, FiltersPage(args: _actionPageArgs));
 
-  void _onUpscale(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => UpscalePage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onEditor(BuildContext context) => _pushPage(context, EditorPage(args: _actionPageArgs));
 
-  void _onSharpen(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SharpenPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onUpscale(BuildContext context) => _pushPage(context, UpscalePage(args: _actionPageArgs));
 
-  void _onBlur(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => BlurPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onSharpen(BuildContext context) => _pushPage(context, SharpenPage(args: _actionPageArgs));
 
-  void _onWatermark(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WatermarkPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onBlur(BuildContext context) => _pushPage(context, BlurPage(args: _actionPageArgs));
 
-  void _onRemoveWatermark(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const RemoveWatermarkPage(),
-      ),
-    );
-  }
+  void _onWatermark(BuildContext context) => _pushPage(context, WatermarkPage(args: _actionPageArgs));
 
-  void _onFaceBlur(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => FaceBlurPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onRemoveWatermark(BuildContext context) => _pushPage(context, const RemoveWatermarkPage());
 
-  void _onDrawOnPhoto(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => DrawOnPhotoPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onFaceBlur(BuildContext context) => _pushPage(context, FaceBlurPage(args: _actionPageArgs));
 
-  void _onRemoveBackground(
-    BuildContext context, {
-    List<DropzoneFileInterface>? dropped,
-    List<PlatformFile>? picked,
-  }) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => RemoveBackgroundPage(
-          args: ActionPageArgs(
-            dropped: dropped,
-            picked: picked,
-            dropzoneController: _dropzoneController,
-          ),
-        ),
-      ),
-    );
-  }
+  void _onDrawOnPhoto(BuildContext context) => _pushPage(context, DrawOnPhotoPage(args: _actionPageArgs));
+
+  void _onRemoveBackground(BuildContext context) => _pushPage(context, RemoveBackgroundPage(args: _actionPageArgs));
 }
 
 class _ActionButton extends StatelessWidget {
@@ -784,13 +548,11 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.fullWidth = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -825,7 +587,7 @@ class _ActionButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           splashColor: AppTheme.textPrimary.withOpacity(0.1),
-          child: fullWidth ? SizedBox(width: double.infinity, child: content) : content,
+          child: content,
         ),
       ),
     );

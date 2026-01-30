@@ -273,7 +273,8 @@ class ImageService {
       b[5] == 10 &&
       b[6] == 26 &&
       b[7] == 10;
-  static bool _isGif(List<int> b) => b.length >= 6 && b.sublist(0, 6).every((e) => e != 0);
+  static bool _isGif(List<int> b) =>
+      b.length >= 6 && b[0] == 0x47 && b[1] == 0x49 && b[2] == 0x46; // GIF87a / GIF89a
   static bool _isBmp(List<int> b) => b.length >= 2 && b[0] == 0x42 && b[1] == 0x4D;
   static bool _isWebP(List<int> b) =>
       b.length >= 12 &&

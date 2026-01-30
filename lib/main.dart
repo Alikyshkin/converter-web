@@ -39,7 +39,7 @@ class ImageCompressorApp extends StatelessWidget {
           ),
         ),
         textTheme: GoogleFonts.interTextTheme(
-          ThemeData.light().textTheme.copyWith(
+          ThemeData().textTheme.copyWith(
                 headlineMedium: const TextStyle(
                   color: AppTheme.textPrimary,
                   fontSize: 22,

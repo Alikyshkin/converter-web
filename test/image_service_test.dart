@@ -155,5 +155,47 @@ void main() {
         expect(result[1], 0xD8);
       });
     });
+
+    group('crop', () {
+      test('100% по ширине и высоте возвращает те же байты', () {
+        final result = ImageService.crop(validPngBytes, widthPercent: 100, heightPercent: 100);
+        expect(result, isNotNull);
+        expect(ImageService.decode(result!), isNotNull);
+      });
+      test('50% по центру возвращает меньшее изображение', () {
+        final result = ImageService.crop(validPngBytes, widthPercent: 50, heightPercent: 50);
+        expect(result, isNotNull);
+        final decoded = ImageService.decode(result!);
+        expect(decoded, isNotNull);
+        expect(decoded!.width, 25);
+        expect(decoded.height, 25);
+      });
+    });
+
+    group('removeBackground', () {
+      test('возвращает PNG с прозрачностью', () {
+        final result = ImageService.removeBackground(validPngBytes, tolerance: 0.2);
+        expect(result, isNotNull);
+        expect(result!.length >= 8, isTrue);
+        expect(result.sublist(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
+      });
+      test('невалидные байты возвращают null', () {
+        final result = ImageService.removeBackground(Uint8List.fromList([1, 2, 3]), tolerance: 0.3);
+        expect(result, isNull);
+      });
+    });
+
+    group('sharpen', () {
+      test('возвращает не null при любом amount', () {
+        final result = ImageService.sharpen(validPngBytes, amount: 0.5);
+        expect(result, isNotNull);
+        expect(ImageService.decode(result!), isNotNull);
+      });
+      test('amount 1 возвращает валидное изображение', () {
+        final result = ImageService.sharpen(validPngBytes, amount: 1.0);
+        expect(result, isNotNull);
+        expect(ImageService.decode(result!), isNotNull);
+      });
+    });
   });
 }

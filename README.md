@@ -41,7 +41,7 @@ python3 -m http.server 8080
 
 ## Сборка из исходников
 
-Исходный код Flutter: `lib/main.dart`, `lib/home_page.dart`. Шаблон веб-оболочки: `web/index.html`.
+Основные модули: `lib/main.dart`, `lib/home_page.dart`, `lib/action_pages.dart`, `lib/image_service.dart`, `lib/file_loader.dart`, `lib/download_helper.dart`, `lib/face_detector.dart`. Шаблон веб-оболочки: `web/index.html`.
 
 ```bash
 flutter pub get
@@ -74,20 +74,37 @@ flutter pub get
 flutter test
 ```
 
-Тесты: сценарии главной страницы, надписи, кнопки (все инструменты, включая Размытие лиц, Рисовать, Удалить фон), отсутствие наложения контента, экраны действий (Сжать, Конвертировать, Размытие лиц, Рисовать и др.), приложение и тема — см. `test/`.
+Тесты (в `test/`):
+
+| Файл | Что проверяется |
+|------|------------------|
+| `app_test.dart` | Запуск приложения, заголовок, подзаголовок, отсутствие debug banner |
+| `app_theme_test.dart` | Цвета, отступы, склонение «файл» (fileCount) |
+| `image_service_test.dart` | Декодирование, сжатие, конвертация, resize, rotate, flip, blur, blurRegions, crop, removeBackground, sharpen |
+| `file_loader_test.dart` | loadFileBytes: пустые аргументы, picked с/без bytes |
+| `download_helper_test.dart` | Stub: UnsupportedError вне веба |
+| `face_detector_test.dart` | detectFaces: тип возврата, stub возвращает пустой список |
+| `home_page_test.dart` | Заголовок, зона загрузки, кнопки инструментов, навигация на все экраны (в т.ч. Убрать вод. знак), «Загрузить другие», отсутствие наложения контента |
+| `action_pages_test.dart` | CompressPage, ConvertPage, SharpenPage, FaceBlurPage, RemoveBackgroundPage, DrawOnPhotoPage, RemoveWatermarkPage при пустых аргументах или статическом контенте, отсутствие наложения |
 
 ## Структура проекта
 
 | Путь | Назначение |
 |------|------------|
-| `index.html` | Точка входа, экран загрузки |
+| `index.html` | Точка входа (развёрнутый сайт), экран загрузки |
 | `main.dart.js` | Скомпилированное приложение |
 | `flutter.js`, `flutter_bootstrap.js` | Загрузчик Flutter |
 | `canvaskit/` | Движок рендеринга (локальный) |
 | `manifest.json` | PWA: название, иконки, тема |
 | `flutter_service_worker.js` | Офлайн и кэш |
-| `lib/` | Исходный код Dart |
-| `web/index.html` | Шаблон для `flutter build web` |
+| `lib/main.dart` | Точка входа приложения, тема |
+| `lib/home_page.dart` | Главная страница, зона загрузки, кнопки инструментов |
+| `lib/action_pages.dart` | Экраны действий (Сжать, Конвертировать, Размер, Рисовать и др.) |
+| `lib/image_service.dart` | Обработка изображений (сжатие, конвертация, фильтры и т.д.) |
+| `lib/file_loader.dart` | Загрузка байтов из выбранных/сброшенных файлов |
+| `lib/download_helper.dart` | Скачивание (веб / заглушка) |
+| `lib/face_detector.dart` | Детекция лиц (веб / заглушка) |
+| `web/index.html` | Шаблон для `flutter build web`, скрипт Face Detector |
 
 Артефакты сборки (`build/`, `.dart_tool/`, `.last_build_id` и др.) перечислены в `.gitignore`.
 

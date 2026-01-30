@@ -33,6 +33,58 @@ String _extension(String path) {
   return i > 0 ? path.substring(i + 1).toLowerCase() : '';
 }
 
+Future<List<LoadedFile>> loadFilesFromArgs(ActionPageArgs args) {
+  return loadFileBytes(
+    dropped: args.dropped,
+    picked: args.picked,
+    dropzoneController: args.dropzoneController,
+  );
+}
+
+void downloadAllAndNotify(BuildContext context, List<LoadedFile> results) {
+  for (final f in results) {
+    downloadBytes(f.bytes, f.name);
+  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text('Скачано: ${AppTheme.fileCount(results.length)}')),
+  );
+}
+
+Widget buildResultsScaffold(
+  BuildContext context, {
+  required String titleDone,
+  required List<LoadedFile> results,
+  required VoidCallback onDownloadAll,
+  Widget? topContent,
+}) {
+  return Scaffold(
+    appBar: AppBar(title: Text(titleDone)),
+    body: ListView(
+      padding: const EdgeInsets.all(AppTheme.pagePadding),
+      children: [
+        if (topContent != null) ...[
+          topContent,
+          const SizedBox(height: AppTheme.blockGap),
+        ],
+        ElevatedButton(
+          onPressed: onDownloadAll,
+          child: const Text('Скачать все'),
+        ),
+        const SizedBox(height: AppTheme.sectionGap),
+        ...results.map(
+          (f) => ListTile(
+            title: Text(f.name),
+            trailing: TextButton(
+              onPressed: () => downloadBytes(f.bytes, f.name),
+              child: const Text('Скачать'),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// Экран сжатия: качество JPEG 1–100, затем «Применить» и скачивание.
 class CompressPage extends StatefulWidget {
   const CompressPage({super.key, required this.args});
@@ -57,11 +109,7 @@ class _CompressPageState extends State<CompressPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) {
@@ -92,12 +140,7 @@ class _CompressPageState extends State<CompressPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')),
-    );
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -115,26 +158,14 @@ class _CompressPageState extends State<CompressPage> {
       );
     }
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Сжать — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            Text('Обработано: ${AppTheme.fileCount(_results!.length)}', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: AppTheme.blockGap),
-            ElevatedButton(
-              onPressed: _downloadAll,
-              child: const Text('Скачать все'),
-            ),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(
-                  title: Text(f.name),
-                  trailing: TextButton(
-                    onPressed: () => downloadBytes(f.bytes, f.name),
-                    child: const Text('Скачать'),
-                  ),
-                )),
-          ],
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Сжать — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
+        topContent: Text(
+          'Обработано: ${AppTheme.fileCount(_results!.length)}',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
       );
     }
@@ -183,11 +214,7 @@ class _ConvertPageState extends State<ConvertPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -215,10 +242,7 @@ class _ConvertPageState extends State<ConvertPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -226,16 +250,11 @@ class _ConvertPageState extends State<ConvertPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Конвертировать')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Конвертировать')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Конвертировать — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Конвертировать — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -291,11 +310,7 @@ class _ResizePageState extends State<ResizePage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -345,10 +360,7 @@ class _ResizePageState extends State<ResizePage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -356,16 +368,11 @@ class _ResizePageState extends State<ResizePage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Размер')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Размер')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Размер — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Размер — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -412,11 +419,7 @@ class _RotatePageState extends State<RotatePage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -441,10 +444,7 @@ class _RotatePageState extends State<RotatePage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -452,16 +452,11 @@ class _RotatePageState extends State<RotatePage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Повернуть')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Повернуть')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Повернуть — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Повернуть — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -513,11 +508,7 @@ class _FlipPageState extends State<FlipPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -546,10 +537,7 @@ class _FlipPageState extends State<FlipPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -557,16 +545,11 @@ class _FlipPageState extends State<FlipPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Отразить')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Отразить')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Отразить — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Отразить — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -609,11 +592,7 @@ class _CropPageState extends State<CropPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -638,10 +617,7 @@ class _CropPageState extends State<CropPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -649,16 +625,11 @@ class _CropPageState extends State<CropPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Обрезать')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Обрезать')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Обрезать — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Обрезать — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -708,11 +679,7 @@ class _FiltersPageState extends State<FiltersPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -744,10 +711,7 @@ class _FiltersPageState extends State<FiltersPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -755,16 +719,11 @@ class _FiltersPageState extends State<FiltersPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Фильтры')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Фильтры')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Фильтры — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Фильтры — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -839,11 +798,7 @@ class _EditorPageState extends State<EditorPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -897,10 +852,7 @@ class _EditorPageState extends State<EditorPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -908,16 +860,11 @@ class _EditorPageState extends State<EditorPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Редактор')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Редактор')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Редактор — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Редактор — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
 
@@ -1031,11 +978,7 @@ class _UpscalePageState extends State<UpscalePage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -1060,10 +1003,7 @@ class _UpscalePageState extends State<UpscalePage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -1071,16 +1011,11 @@ class _UpscalePageState extends State<UpscalePage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Увеличить')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Увеличить')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Увеличить — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Увеличить — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -1123,11 +1058,7 @@ class _SharpenPageState extends State<SharpenPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -1152,10 +1083,7 @@ class _SharpenPageState extends State<SharpenPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -1163,16 +1091,11 @@ class _SharpenPageState extends State<SharpenPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Резкость')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Резкость')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Резкость — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Резкость — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -1215,11 +1138,7 @@ class _BlurPageState extends State<BlurPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -1244,10 +1163,7 @@ class _BlurPageState extends State<BlurPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -1255,16 +1171,11 @@ class _BlurPageState extends State<BlurPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Размытие')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Размытие')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Размытие — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Размытие — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -1315,11 +1226,7 @@ class _WatermarkPageState extends State<WatermarkPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -1349,10 +1256,7 @@ class _WatermarkPageState extends State<WatermarkPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -1360,16 +1264,11 @@ class _WatermarkPageState extends State<WatermarkPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Водяной знак')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Водяной знак')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Водяной знак — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Водяной знак — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -1450,11 +1349,7 @@ class _FaceBlurPageState extends State<FaceBlurPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -1490,12 +1385,7 @@ class _FaceBlurPageState extends State<FaceBlurPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')),
-    );
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -1513,22 +1403,11 @@ class _FaceBlurPageState extends State<FaceBlurPage> {
       );
     }
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Размытие лиц — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(
-                  title: Text(f.name),
-                  trailing: TextButton(
-                    onPressed: () => downloadBytes(f.bytes, f.name),
-                    child: const Text('Скачать'),
-                  ),
-                )),
-          ],
-        ),
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Размытие лиц — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
       );
     }
     return Scaffold(
@@ -1587,11 +1466,7 @@ class _RemoveBackgroundPageState extends State<RemoveBackgroundPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
@@ -1616,10 +1491,7 @@ class _RemoveBackgroundPageState extends State<RemoveBackgroundPage> {
 
   void _downloadAll() {
     if (_results == null) return;
-    for (final f in _results!) {
-      downloadBytes(f.bytes, f.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')));
+    downloadAllAndNotify(context, _results!);
   }
 
   @override
@@ -1627,17 +1499,14 @@ class _RemoveBackgroundPageState extends State<RemoveBackgroundPage> {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Удалить фон')), body: Center(child: Text(_error!)));
     if (_files == null) return Scaffold(appBar: AppBar(title: const Text('Удалить фон')), body: const Center(child: CircularProgressIndicator()));
     if (_results != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Удалить фон — готово')),
-        body: ListView(
-          padding: const EdgeInsets.all(AppTheme.pagePadding),
-          children: [
-            const Text('Результат сохранён в формате PNG с прозрачностью.', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
-            const SizedBox(height: AppTheme.blockGap),
-            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
-            const SizedBox(height: AppTheme.sectionGap),
-            ..._results!.map((f) => ListTile(title: Text(f.name), trailing: TextButton(onPressed: () => downloadBytes(f.bytes, f.name), child: const Text('Скачать')))),
-          ],
+      return buildResultsScaffold(
+        context,
+        titleDone: 'Удалить фон — готово',
+        results: _results!,
+        onDownloadAll: _downloadAll,
+        topContent: const Text(
+          'Результат сохранён в формате PNG с прозрачностью.',
+          style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
         ),
       );
     }
@@ -1714,11 +1583,7 @@ class _DrawOnPhotoPageState extends State<DrawOnPhotoPage> {
   }
 
   Future<void> _load() async {
-    final list = await loadFileBytes(
-      dropped: widget.args.dropped,
-      picked: widget.args.picked,
-      dropzoneController: widget.args.dropzoneController,
-    );
+    final list = await loadFilesFromArgs(widget.args);
     if (!mounted) return;
     if (list.isEmpty) {
       setState(() => _error = 'Нет файлов.');

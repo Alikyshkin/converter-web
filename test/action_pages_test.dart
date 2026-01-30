@@ -135,6 +135,23 @@ void main() {
     });
   });
 
+  group('SharpenPage', () {
+    testWidgets('при пустых аргументах показывает «Нет файлов.»', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: SharpenPage(
+            args: const ActionPageArgs(dropped: null, picked: [], dropzoneController: null),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Нет файлов.'), findsOneWidget);
+    });
+  });
+
   group('RemoveBackgroundPage', () {
     testWidgets('при пустых аргументах показывает «Нет файлов.»', (WidgetTester tester) async {
       await tester.pumpWidget(

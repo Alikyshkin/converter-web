@@ -17,7 +17,6 @@ Future<List<FaceRegion>> detectFaces(Uint8List imageBytes) async {
       imageElement as JSAny,
     );
     final result = await (p as JSPromise).toDart;
-    html.Url.revokeObjectUrl(url);
     if (result == null) return [];
     final arr = result as JSObject;
     final length =
@@ -36,7 +35,8 @@ Future<List<FaceRegion>> detectFaces(Uint8List imageBytes) async {
     }
     return regions;
   } catch (_) {
-    html.Url.revokeObjectUrl(url);
     return [];
+  } finally {
+    html.Url.revokeObjectUrl(url);
   }
 }

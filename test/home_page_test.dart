@@ -217,6 +217,20 @@ void main() {
       expect(find.byType(WatermarkPage), findsOneWidget);
     });
 
+    testWidgets('нажатие «Убрать вод. знак» открывает экран об удалении водяного знака', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: const HomePage(initialUploadedCountForTesting: 1),
+        ),
+      );
+
+      await tester.tap(find.text('Убрать вод. знак'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RemoveWatermarkPage), findsOneWidget);
+    });
+
     testWidgets('нажатие «Размытие» открывает экран размытия', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
