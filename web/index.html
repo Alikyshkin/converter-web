@@ -5,31 +5,29 @@
   <title>Image Compressor — сжатие изображений</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#ffffff">
   <meta name="description" content="Сжимайте изображения прямо в браузере. Быстро и без загрузки на сервер.">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    /* Тема приложения (AppTheme): те же цвета и радиусы, что и во Flutter */
     :root {
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --accent: #38bdf8;
-      --accent-dim: rgba(56, 189, 248, 0.15);
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --radius-card: 16px;
-      --page-padding: 24px;
+      --bg: #ffffff;
+      --surface: #f5f5f5;
+      --text: #1a1a1a;
+      --text-muted: #616161;
+      --outline: #e0e0e0;
+      --radius-card: 12px;
+      --page-padding: 20px;
     }
     *, *::before, *::after { box-sizing: border-box; }
     html { height: 100%; }
     body {
       margin: 0;
       min-height: 100%;
-      font-family: 'Outfit', system-ui, sans-serif;
+      font-family: 'Inter', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       -webkit-font-smoothing: antialiased;
@@ -38,7 +36,7 @@
     flutter-app {
       display: block;
       min-height: 100vh;
-      background: radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-dim), transparent), var(--bg);
+      background: var(--bg);
     }
     #flutter-loading {
       position: fixed;
@@ -57,23 +55,22 @@
       pointer-events: none;
     }
     .loading-brand {
-      font-size: 1.75rem;
+      font-size: 1.375rem;
       font-weight: 600;
-      letter-spacing: -0.02em;
+      letter-spacing: 0;
       color: var(--text);
       margin-bottom: 0.5rem;
     }
-    .loading-brand span { color: var(--accent); }
     .loading-hint {
-      font-size: 0.875rem;
+      font-size: 0.9375rem;
       color: var(--text-muted);
       margin-bottom: 2rem;
     }
     .loading-bar {
       width: 120px;
       height: 3px;
-      background: var(--surface);
-      border-radius: 12px;
+      background: var(--outline);
+      border-radius: 8px;
       overflow: hidden;
     }
     .loading-bar::after {
@@ -81,8 +78,8 @@
       display: block;
       height: 100%;
       width: 40%;
-      background: var(--accent);
-      border-radius: 12px;
+      background: var(--text);
+      border-radius: 8px;
       animation: loading 1s ease-in-out infinite;
     }
     @keyframes loading {
@@ -93,11 +90,33 @@
 </head>
 <body>
   <div id="flutter-loading" aria-hidden="true">
-    <div class="loading-brand">Image <span>Compressor</span></div>
+    <div class="loading-brand">Image Compressor</div>
     <div class="loading-hint">Загрузка…</div>
     <div class="loading-bar" role="progressbar" aria-label="Загрузка приложения"></div>
   </div>
   <script src="flutter.js" defer></script>
+  <script>
+    window.__detectFaces = function (img) {
+      return new Promise(function (resolve) {
+        if (typeof FaceDetector === 'undefined') {
+          resolve([]);
+          return;
+        }
+        try {
+          new FaceDetector().detect(img)
+            .then(function (faces) {
+              resolve(faces.map(function (f) {
+                var b = f.boundingBox;
+                return { x: b.x, y: b.y, width: b.width, height: b.height };
+              }));
+            })
+            .catch(function () { resolve([]); });
+        } catch (e) {
+          resolve([]);
+        }
+      });
+    };
+  </script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {

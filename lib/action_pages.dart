@@ -6,6 +6,7 @@ import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:image_compressor/app_theme.dart';
 import 'package:image_compressor/download_helper.dart';
 import 'package:image_compressor/file_loader.dart';
+import 'package:image_compressor/face_detector.dart';
 import 'package:image_compressor/image_service.dart';
 
 /// Базовые данные для экранов действий: загруженные файлы и контроллер dropzone.
@@ -1416,6 +1417,143 @@ class RemoveWatermarkPage extends StatelessWidget {
           const Text(
             'Рекомендации:\n• Загрузите исходное изображение без водяного знака.\n• Если знак расположен по краю — используйте «Обрезать», чтобы обрезать область с водяным знаком.',
             style: TextStyle(fontSize: 15, height: 1.5, color: AppTheme.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Размытие лиц: детекция лиц (Face Detector API в браузере), размытие областей лиц.
+class FaceBlurPage extends StatefulWidget {
+  const FaceBlurPage({super.key, required this.args});
+
+  final ActionPageArgs args;
+
+  @override
+  State<FaceBlurPage> createState() => _FaceBlurPageState();
+}
+
+class _FaceBlurPageState extends State<FaceBlurPage> {
+  List<LoadedFile>? _files;
+  String? _error;
+  int _blurRadius = 15;
+  List<LoadedFile>? _results;
+  bool _processing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final list = await loadFileBytes(
+      dropped: widget.args.dropped,
+      picked: widget.args.picked,
+      dropzoneController: widget.args.dropzoneController,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (list.isEmpty) _error = 'Нет файлов.';
+      else _files = list;
+    });
+  }
+
+  Future<void> _apply() async {
+    if (_files == null || _files!.isEmpty) return;
+    setState(() => _processing = true);
+    final results = <LoadedFile>[];
+    for (final f in _files!) {
+      final regions = await detectFaces(f.bytes);
+      final out = regions.isEmpty
+          ? null
+          : ImageService.blurRegions(
+              f.bytes,
+              regions: regions,
+              radius: _blurRadius,
+            );
+      if (out != null) {
+        results.add((name: '${_baseName(f.name)}_faces_blurred.${_extension(f.name)}', bytes: out));
+      } else {
+        results.add((name: f.name, bytes: f.bytes));
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _processing = false;
+      _results = results;
+    });
+  }
+
+  void _downloadAll() {
+    if (_results == null) return;
+    for (final f in _results!) {
+      downloadBytes(f.bytes, f.name);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Скачано: ${AppTheme.fileCount(_results!.length)}')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Размытие лиц')),
+        body: Center(child: Text(_error!)),
+      );
+    }
+    if (_files == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Размытие лиц')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_results != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Размытие лиц — готово')),
+        body: ListView(
+          padding: const EdgeInsets.all(AppTheme.pagePadding),
+          children: [
+            ElevatedButton(onPressed: _downloadAll, child: const Text('Скачать все')),
+            const SizedBox(height: AppTheme.sectionGap),
+            ..._results!.map((f) => ListTile(
+                  title: Text(f.name),
+                  trailing: TextButton(
+                    onPressed: () => downloadBytes(f.bytes, f.name),
+                    child: const Text('Скачать'),
+                  ),
+                )),
+          ],
+        ),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Размытие лиц')),
+      body: ListView(
+        padding: const EdgeInsets.all(AppTheme.pagePadding),
+        children: [
+          const Text(
+            'Лица на фото будут найдены (Face Detector API в браузере) и размыты. Лучше всего работает в Chrome.',
+            style: TextStyle(fontSize: 14, height: 1.4, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: AppTheme.sectionGap),
+          const Text('Сила размытия (радиус):'),
+          Slider(
+            value: _blurRadius.toDouble(),
+            min: 5,
+            max: 25,
+            divisions: 10,
+            onChanged: (v) => setState(() => _blurRadius = v.round()),
+          ),
+          Text('Радиус: $_blurRadius'),
+          const SizedBox(height: AppTheme.sectionGap),
+          FilledButton(
+            onPressed: _processing ? null : _apply,
+            child: _processing
+                ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Найти лица и размыть'),
           ),
         ],
       ),

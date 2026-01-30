@@ -299,6 +299,14 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Expanded(
                   child: _ActionButton(
+                    icon: Icons.face_rounded,
+                    label: 'Размытие лиц',
+                    onTap: () => _onFaceBlur(context, dropped: _droppedFiles, picked: _pickedFiles),
+                  ),
+                ),
+                const SizedBox(width: AppTheme.blockGap),
+                Expanded(
+                  child: _ActionButton(
                     icon: Icons.layers_clear_rounded,
                     label: 'Удалить фон',
                     onTap: () => _onRemoveBackground(context, dropped: _droppedFiles, picked: _pickedFiles),
@@ -700,6 +708,24 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const RemoveWatermarkPage(),
+      ),
+    );
+  }
+
+  void _onFaceBlur(
+    BuildContext context, {
+    List<DropzoneFileInterface>? dropped,
+    List<PlatformFile>? picked,
+  }) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FaceBlurPage(
+          args: ActionPageArgs(
+            dropped: dropped,
+            picked: picked,
+            dropzoneController: _dropzoneController,
+          ),
+        ),
       ),
     );
   }
