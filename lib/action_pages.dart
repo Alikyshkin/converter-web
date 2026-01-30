@@ -85,6 +85,53 @@ Widget buildResultsScaffold(
   );
 }
 
+/// Двухколоночный макет: превью слева, действия справа. Превью обновляется при каждом setState.
+Widget buildActionLayout(
+  BuildContext context, {
+  required String title,
+  required Widget previewPanel,
+  required Widget controlsPanel,
+}) {
+  return Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 1,
+          child: Container(
+            margin: const EdgeInsets.all(AppTheme.pagePadding),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+              border: Border.all(color: AppTheme.outline),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: previewPanel,
+          ),
+        ),
+        const SizedBox(width: AppTheme.sectionGap),
+        Expanded(
+          flex: 1,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppTheme.pagePadding),
+            child: controlsPanel,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget buildPreviewImage(Uint8List? bytes) {
+  if (bytes == null || bytes.isEmpty) {
+    return const Center(
+      child: Text('Превью недоступно', style: TextStyle(color: AppTheme.textSecondary)),
+    );
+  }
+  return Center(child: Image.memory(bytes, fit: BoxFit.contain));
+}
+
 /// Экран сжатия: качество JPEG 1–100, затем «Применить» и скачивание.
 class CompressPage extends StatefulWidget {
   const CompressPage({super.key, required this.args});
@@ -169,10 +216,14 @@ class _CompressPageState extends State<CompressPage> {
         ),
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Сжать')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = ImageService.compress(_files!.first.bytes, quality: _quality) ?? _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Сжать',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('Качество JPEG (1–100). Меньше — сильнее сжатие.', style: Theme.of(context).textTheme.bodyMedium),
           Slider(value: _quality.toDouble(), min: 1, max: 100, divisions: 99, label: '$_quality', onChanged: (v) => setState(() => _quality = v.round())),
@@ -257,10 +308,14 @@ class _ConvertPageState extends State<ConvertPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Конвертировать')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = ImageService.convert(_files!.first.bytes, _format) ?? _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Конвертировать',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Формат результата:'),
           DropdownButton<String>(
@@ -268,6 +323,7 @@ class _ConvertPageState extends State<ConvertPage> {
             items: _formats.map((e) => DropdownMenuItem(value: e, child: Text(e.toUpperCase()))).toList(),
             onChanged: (v) => setState(() => _format = v ?? 'png'),
           ),
+          const SizedBox(height: AppTheme.sectionGap),
           FilledButton(onPressed: _processing ? null : _apply, child: _processing ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Применить')),
         ],
       ),
@@ -375,17 +431,39 @@ class _ResizePageState extends State<ResizePage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Размер')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    Uint8List? previewBytes;
+    if (_percentMode) {
+      final p = int.tryParse(_percentCtrl.text) ?? 50;
+      if (p > 0 && p <= 100) {
+        final img = ImageService.decode(_files!.first.bytes);
+        if (img != null) {
+          final nw = (img.width * p / 100).round().clamp(1, 10000);
+          final nh = (img.height * p / 100).round().clamp(1, 10000);
+          previewBytes = ImageService.resize(_files!.first.bytes, width: nw, height: nh);
+        }
+      }
+    } else {
+      final w = int.tryParse(_widthCtrl.text);
+      final h = int.tryParse(_heightCtrl.text);
+      if (w != null || h != null) {
+        previewBytes = ImageService.resize(_files!.first.bytes, width: w, height: h, maintainAspect: true);
+      }
+    }
+    previewBytes ??= _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Размер',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SwitchListTile(title: const Text('По проценту от оригинала'), value: _percentMode, onChanged: (v) => setState(() => _percentMode = v)),
           if (_percentMode) ...[
-            TextField(controller: _percentCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Процент (1–100)')),
+            TextField(controller: _percentCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Процент (1–100)'), onChanged: (_) => setState(() {})),
           ] else ...[
-            TextField(controller: _widthCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ширина (пусто — по пропорции)')),
-            TextField(controller: _heightCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Высота (пусто — по пропорции)')),
+            TextField(controller: _widthCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ширина (пусто — по пропорции)'), onChanged: (_) => setState(() {})),
+            TextField(controller: _heightCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Высота (пусто — по пропорции)'), onChanged: (_) => setState(() {})),
           ],
           const SizedBox(height: AppTheme.sectionGap),
           FilledButton(onPressed: _processing ? null : _apply, child: _processing ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Применить')),
@@ -459,20 +537,22 @@ class _RotatePageState extends State<RotatePage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Повернуть')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = ImageService.rotate(_files!.first.bytes, _angle) ?? _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Повернуть',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Угол поворота:'),
-          Row(
-            children: [90, 180, 270].map((a) => Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text('$a°'),
-                selected: _angle == a,
-                onSelected: (v) => setState(() => _angle = a),
-              ),
+          Wrap(
+            spacing: 8,
+            children: [90, 180, 270].map((a) => ChoiceChip(
+              label: Text('$a°'),
+              selected: _angle == a,
+              onSelected: (v) => setState(() => _angle = a),
             )).toList(),
           ),
           const SizedBox(height: AppTheme.sectionGap),
@@ -552,10 +632,16 @@ class _FlipPageState extends State<FlipPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Отразить')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = (_horizontal || _vertical)
+        ? (ImageService.flip(_files!.first.bytes, horizontal: _horizontal, vertical: _vertical) ?? _files!.first.bytes)
+        : _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Отразить',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CheckboxListTile(title: const Text('По горизонтали'), value: _horizontal, onChanged: (v) => setState(() => _horizontal = v ?? false)),
           CheckboxListTile(title: const Text('По вертикали'), value: _vertical, onChanged: (v) => setState(() => _vertical = v ?? false)),
@@ -632,10 +718,14 @@ class _CropPageState extends State<CropPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Обрезать')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = ImageService.crop(_files!.first.bytes, widthPercent: _widthPercent, heightPercent: _heightPercent) ?? _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Обрезать',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Обрезка по центру (процент от размера):'),
           Slider(value: _widthPercent.toDouble(), min: 10, max: 100, divisions: 9, label: 'Ширина $_widthPercent%', onChanged: (v) => setState(() => _widthPercent = v.round())),
@@ -726,10 +816,21 @@ class _FiltersPageState extends State<FiltersPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Фильтры')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    Uint8List? out = _files!.first.bytes;
+    if (_brightness != 1.0 || _contrast != 1.0) {
+      out = ImageService.brightnessContrast(out, brightness: _brightness, contrast: _contrast);
+    }
+    if (out != null && _saturation != 1.0) out = ImageService.saturation(out, saturation: _saturation);
+    if (out != null && _grayscale) out = ImageService.grayscale(out, amount: 1.0);
+    if (out != null && _sepia) out = ImageService.sepia(out, amount: 1.0);
+    if (out != null && _blurRadius > 0) out = ImageService.blur(out, radius: _blurRadius);
+    return buildActionLayout(
+      context,
+      title: 'Фильтры',
+      previewPanel: buildPreviewImage(out),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Яркость (1.0 = без изменений):'),
           Slider(value: _brightness, min: 0.3, max: 2.0, onChanged: (v) => setState(() => _brightness = v)),
@@ -870,86 +971,82 @@ class _EditorPageState extends State<EditorPage> {
 
     final file = _files![_previewIndex];
     final previewBytes = _applyPipeline(file.bytes);
-    final hasPreview = previewBytes != null;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Редактор фото'),
-        actions: [
-          if (_files!.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                child: DropdownButton<int>(
-                  value: _previewIndex,
-                  items: List.generate(_files!.length, (i) => DropdownMenuItem(value: i, child: Text('${i + 1}. ${_files![i].name}'))),
-                  onChanged: (v) => setState(() => _previewIndex = v ?? 0),
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    Widget previewPanel = buildPreviewImage(previewBytes);
+    if (_files!.length > 1) {
+      previewPanel = Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (hasPreview)
-            Container(
-              height: 220,
-              margin: const EdgeInsets.only(bottom: AppTheme.sectionGap),
-              decoration: BoxDecoration(border: Border.all(color: AppTheme.outline), borderRadius: BorderRadius.circular(AppTheme.radiusSmall)),
-              child: Image.memory(previewBytes, fit: BoxFit.contain),
-            )
-          else
-            const SizedBox(height: 120, child: Center(child: Text('Превью недоступно'))),
-          const Divider(),
-          const Text('Обрезка (по центру)', style: TextStyle(fontWeight: FontWeight.w600)),
-          Slider(value: _cropWidthPercent.toDouble(), min: 10, max: 100, divisions: 9, onChanged: (v) => setState(() => _cropWidthPercent = v.round())),
-          Text('Ширина: $_cropWidthPercent%'),
-          Slider(value: _cropHeightPercent.toDouble(), min: 10, max: 100, divisions: 9, onChanged: (v) => setState(() => _cropHeightPercent = v.round())),
-          Text('Высота: $_cropHeightPercent%'),
-          const Divider(),
-          const Text('Размер', style: TextStyle(fontWeight: FontWeight.w600)),
-          CheckboxListTile(title: const Text('Изменить размер'), value: _resizeEnabled, onChanged: (v) => setState(() => _resizeEnabled = v ?? false)),
-          if (_resizeEnabled) ...[
-            CheckboxListTile(title: const Text('По проценту'), value: _resizeByPercent, onChanged: (v) => setState(() => _resizeByPercent = v ?? false)),
-            if (_resizeByPercent)
-              Slider(value: _resizePercent.toDouble(), min: 5, max: 100, divisions: 19, onChanged: (v) => setState(() => _resizePercent = v.round()))
-            else ...[
-              TextField(controller: _resizeWidthCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ширина')),
-              TextField(controller: _resizeHeightCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Высота (пусто — по пропорции)')),
-            ],
-          ],
-          const Divider(),
-          const Text('Поворот и отражение', style: TextStyle(fontWeight: FontWeight.w600)),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(label: const Text('90°'), selected: _rotateAngle == 90, onSelected: (v) => setState(() => _rotateAngle = v ? 90 : 0)),
-              ChoiceChip(label: const Text('180°'), selected: _rotateAngle == 180, onSelected: (v) => setState(() => _rotateAngle = v ? 180 : 0)),
-              ChoiceChip(label: const Text('270°'), selected: _rotateAngle == 270, onSelected: (v) => setState(() => _rotateAngle = v ? 270 : 0)),
-            ],
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: DropdownButton<int>(
+              value: _previewIndex,
+              isExpanded: true,
+              items: List.generate(_files!.length, (i) => DropdownMenuItem(value: i, child: Text('${i + 1}. ${_files![i].name}'))),
+              onChanged: (v) => setState(() => _previewIndex = v ?? 0),
+            ),
           ),
-          CheckboxListTile(title: const Text('Отразить по горизонтали'), value: _flipH, onChanged: (v) => setState(() => _flipH = v ?? false)),
-          CheckboxListTile(title: const Text('Отразить по вертикали'), value: _flipV, onChanged: (v) => setState(() => _flipV = v ?? false)),
-          const Divider(),
-          const Text('Фильтры', style: TextStyle(fontWeight: FontWeight.w600)),
-          Slider(value: _brightness, min: 0.3, max: 2.0, onChanged: (v) => setState(() => _brightness = v)),
-          Text('Яркость: ${_brightness.toStringAsFixed(1)}'),
-          Slider(value: _contrast, min: 0.3, max: 2.0, onChanged: (v) => setState(() => _contrast = v)),
-          Text('Контраст: ${_contrast.toStringAsFixed(1)}'),
-          Slider(value: _saturation, min: 0, max: 2.0, onChanged: (v) => setState(() => _saturation = v)),
-          Text('Насыщенность: ${_saturation.toStringAsFixed(1)}'),
-          CheckboxListTile(title: const Text('Ч/б'), value: _grayscale, onChanged: (v) => setState(() => _grayscale = v ?? false)),
-          CheckboxListTile(title: const Text('Сепия'), value: _sepia, onChanged: (v) => setState(() => _sepia = v ?? false)),
-          Slider(value: _blurRadius.toDouble(), min: 0, max: 8, divisions: 8, onChanged: (v) => setState(() => _blurRadius = v.round())),
-          Text('Размытие: $_blurRadius'),
-          const SizedBox(height: AppTheme.sectionGap),
-          FilledButton(
-            onPressed: _processing ? null : _applyToAll,
-            child: _processing ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Применить ко всем'),
-          ),
+          Expanded(child: buildPreviewImage(previewBytes)),
         ],
-      ),
+      );
+    }
+
+    return buildActionLayout(
+      context,
+      title: 'Редактор фото',
+      previewPanel: previewPanel,
+      controlsPanel: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Обрезка (по центру)', style: TextStyle(fontWeight: FontWeight.w600)),
+            Slider(value: _cropWidthPercent.toDouble(), min: 10, max: 100, divisions: 9, onChanged: (v) => setState(() => _cropWidthPercent = v.round())),
+            Text('Ширина: $_cropWidthPercent%'),
+            Slider(value: _cropHeightPercent.toDouble(), min: 10, max: 100, divisions: 9, onChanged: (v) => setState(() => _cropHeightPercent = v.round())),
+            Text('Высота: $_cropHeightPercent%'),
+            const Divider(),
+            const Text('Размер', style: TextStyle(fontWeight: FontWeight.w600)),
+            CheckboxListTile(title: const Text('Изменить размер'), value: _resizeEnabled, onChanged: (v) => setState(() => _resizeEnabled = v ?? false)),
+            if (_resizeEnabled) ...[
+              CheckboxListTile(title: const Text('По проценту'), value: _resizeByPercent, onChanged: (v) => setState(() => _resizeByPercent = v ?? false)),
+              if (_resizeByPercent)
+                Slider(value: _resizePercent.toDouble(), min: 5, max: 100, divisions: 19, onChanged: (v) => setState(() => _resizePercent = v.round()))
+              else ...[
+                TextField(controller: _resizeWidthCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Ширина'), onChanged: (_) => setState(() {})),
+                TextField(controller: _resizeHeightCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Высота (пусто — по пропорции)'), onChanged: (_) => setState(() {})),
+              ],
+            ],
+            const Divider(),
+            const Text('Поворот и отражение', style: TextStyle(fontWeight: FontWeight.w600)),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(label: const Text('90°'), selected: _rotateAngle == 90, onSelected: (v) => setState(() => _rotateAngle = v ? 90 : 0)),
+                ChoiceChip(label: const Text('180°'), selected: _rotateAngle == 180, onSelected: (v) => setState(() => _rotateAngle = v ? 180 : 0)),
+                ChoiceChip(label: const Text('270°'), selected: _rotateAngle == 270, onSelected: (v) => setState(() => _rotateAngle = v ? 270 : 0)),
+              ],
+            ),
+            CheckboxListTile(title: const Text('Отразить по горизонтали'), value: _flipH, onChanged: (v) => setState(() => _flipH = v ?? false)),
+            CheckboxListTile(title: const Text('Отразить по вертикали'), value: _flipV, onChanged: (v) => setState(() => _flipV = v ?? false)),
+            const Divider(),
+            const Text('Фильтры', style: TextStyle(fontWeight: FontWeight.w600)),
+            Slider(value: _brightness, min: 0.3, max: 2.0, onChanged: (v) => setState(() => _brightness = v)),
+            Text('Яркость: ${_brightness.toStringAsFixed(1)}'),
+            Slider(value: _contrast, min: 0.3, max: 2.0, onChanged: (v) => setState(() => _contrast = v)),
+            Text('Контраст: ${_contrast.toStringAsFixed(1)}'),
+            Slider(value: _saturation, min: 0, max: 2.0, onChanged: (v) => setState(() => _saturation = v)),
+            Text('Насыщенность: ${_saturation.toStringAsFixed(1)}'),
+            CheckboxListTile(title: const Text('Ч/б'), value: _grayscale, onChanged: (v) => setState(() => _grayscale = v ?? false)),
+            CheckboxListTile(title: const Text('Сепия'), value: _sepia, onChanged: (v) => setState(() => _sepia = v ?? false)),
+            Slider(value: _blurRadius.toDouble(), min: 0, max: 8, divisions: 8, onChanged: (v) => setState(() => _blurRadius = v.round())),
+            Text('Размытие: $_blurRadius'),
+            const SizedBox(height: AppTheme.sectionGap),
+            FilledButton(
+              onPressed: _processing ? null : _applyToAll,
+              child: _processing ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Применить ко всем'),
+            ),
+          ],
+        ),
     );
   }
 }
@@ -1018,10 +1115,14 @@ class _UpscalePageState extends State<UpscalePage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Увеличить')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = _percent == 100 ? _files!.first.bytes : (ImageService.upscale(_files!.first.bytes, percent: _percent) ?? _files!.first.bytes);
+    return buildActionLayout(
+      context,
+      title: 'Увеличить',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Масштаб (100% — без изменений, 200% — удвоение размера):'),
           Slider(value: _percent.toDouble(), min: 100, max: 200, divisions: 10, label: '$_percent%', onChanged: (v) => setState(() => _percent = v.round())),
@@ -1098,10 +1199,14 @@ class _SharpenPageState extends State<SharpenPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Резкость / Улучшить качество')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = ImageService.sharpen(_files!.first.bytes, amount: _amount) ?? _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Резкость / Улучшить качество',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Увеличивает резкость и может частично компенсировать лёгкое размытие. Сила эффекта 0–2:'),
           Slider(value: _amount, min: 0.3, max: 2.0, onChanged: (v) => setState(() => _amount = v)),
@@ -1178,10 +1283,14 @@ class _BlurPageState extends State<BlurPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Размытие')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = _radius == 0 ? _files!.first.bytes : (ImageService.blur(_files!.first.bytes, radius: _radius) ?? _files!.first.bytes);
+    return buildActionLayout(
+      context,
+      title: 'Размытие',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text('Радиус размытия (0 — без изменений):'),
           Slider(value: _radius.toDouble(), min: 0, max: 10, divisions: 10, onChanged: (v) => setState(() => _radius = v.round())),
@@ -1271,12 +1380,19 @@ class _WatermarkPageState extends State<WatermarkPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Водяной знак')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final text = _textCtrl.text.trim();
+    final previewBytes = text.isEmpty
+        ? _files!.first.bytes
+        : (ImageService.watermarkText(_files!.first.bytes, text: text, position: _position, opacity: _opacity) ?? _files!.first.bytes);
+    return buildActionLayout(
+      context,
+      title: 'Водяной знак',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(controller: _textCtrl, decoration: const InputDecoration(labelText: 'Текст водяного знака'), maxLength: 50),
+          TextField(controller: _textCtrl, decoration: const InputDecoration(labelText: 'Текст водяного знака'), maxLength: 50, onChanged: (_) => setState(() {})),
           const Text('Позиция:'),
           DropdownButton<String>(
             value: _position,
@@ -1410,10 +1526,13 @@ class _FaceBlurPageState extends State<FaceBlurPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Размытие лиц')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    return buildActionLayout(
+      context,
+      title: 'Размытие лиц',
+      previewPanel: buildPreviewImage(_files!.first.bytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Лица на фото будут найдены (Face Detector API в браузере) и размыты. Лучше всего работает в Chrome.',
@@ -1510,10 +1629,14 @@ class _RemoveBackgroundPageState extends State<RemoveBackgroundPage> {
         ),
       );
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('Удалить фон')),
-      body: ListView(
-        padding: const EdgeInsets.all(AppTheme.pagePadding),
+    final previewBytes = ImageService.removeBackground(_files!.first.bytes, tolerance: _tolerance) ?? _files!.first.bytes;
+    return buildActionLayout(
+      context,
+      title: 'Удалить фон',
+      previewPanel: buildPreviewImage(previewBytes),
+      controlsPanel: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Фон определяется по среднему цвету углов изображения. Пиксели, похожие на этот цвет, становятся прозрачными. Лучше всего работает с однотонным фоном.',

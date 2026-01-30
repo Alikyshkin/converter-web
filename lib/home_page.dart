@@ -32,7 +32,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  static const double _maxContentWidth = 520.0;
+  static const double _maxContentWidth = 760.0;
 
   @override
   Widget build(BuildContext context) {
@@ -376,60 +376,59 @@ class _HomePageState extends State<HomePage> {
               onLeave: () => setState(() => _dropzoneHover = false),
               mime: const ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'],
             ),
-            IgnorePointer(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _dropzoneHover ? Icons.folder_open_rounded : Icons.cloud_upload_rounded,
-                    size: AppTheme.iconBoxSize,
-                    color: _dropzoneHover ? AppTheme.textPrimary : AppTheme.textSecondary,
-                  ),
-                  const SizedBox(height: AppTheme.blockGap),
-                  Text(
-                    _dropzoneHover ? 'Отпустите для загрузки' : 'Перетащите изображения сюда',
-                    style: TextStyle(
-                      color: AppTheme.textPrimary,
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => _pickFiles(context),
+                  icon: const Icon(Icons.folder_open_rounded, size: 22),
+                  label: const Text('Выбрать файлы'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    textStyle: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'JPG, PNG, WebP, GIF, BMP',
-                    style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: AppTheme.blockGap,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _pickFiles(context),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  splashColor: AppTheme.textPrimary.withOpacity(0.1),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Text(
-                      'Выбрать файлы',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
                     ),
                   ),
                 ),
-              ),
+                const SizedBox(height: AppTheme.sectionGap),
+                IgnorePointer(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _dropzoneHover ? Icons.folder_open_rounded : Icons.cloud_upload_rounded,
+                        size: AppTheme.iconBoxSize,
+                        color: _dropzoneHover ? AppTheme.textPrimary : AppTheme.textSecondary,
+                      ),
+                      const SizedBox(height: AppTheme.blockGap),
+                      Text(
+                        _dropzoneHover ? 'Отпустите для загрузки' : 'Перетащите изображения сюда',
+                        style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'JPG, PNG, WebP, GIF, BMP',
+                        style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
