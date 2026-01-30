@@ -5,7 +5,10 @@ import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:image_compressor/app_theme.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.initialUploadedCountForTesting});
+
+  /// Только для тестов: показать экран «Загружено N файлов» без реальной загрузки.
+  final int? initialUploadedCountForTesting;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -18,6 +21,14 @@ class _HomePageState extends State<HomePage> {
   List<PlatformFile>? _pickedFiles;
 
   bool get _hasUploadedFiles => _uploadedCount != null && _uploadedCount! > 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialUploadedCountForTesting != null) {
+      _uploadedCount = widget.initialUploadedCountForTesting;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
