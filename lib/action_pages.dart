@@ -653,7 +653,10 @@ class _FlipPageState extends State<FlipPage> {
   }
 }
 
-/// Экран обрезки: обрезка по центру (процент ширины/высоты), затем «Применить» и скачивание.
+/// Режим перетаскивания при обрезке.
+enum _CropDragMode { none, move, left, right, top, bottom, topLeft, topRight, bottomLeft, bottomRight }
+
+/// Экран обрезки: пользователь тянет прямоугольник на фото, затем «Применить».
 class CropPage extends StatefulWidget {
   const CropPage({super.key, required this.args});
 
@@ -666,8 +669,11 @@ class CropPage extends StatefulWidget {
 class _CropPageState extends State<CropPage> {
   List<LoadedFile>? _files;
   String? _error;
-  int _widthPercent = 100;
-  int _heightPercent = 100;
+  /// Область обрезки в нормализованных координатах 0–1 (left, top, right, bottom).
+  Rect _cropRect = const Rect.fromLTRB(0, 0, 1, 1);
+  _CropDragMode _cropDragMode = _CropDragMode.none;
+  Rect _cropDragStartRect = Rect.zero;
+  Offset _cropDragStartLocal = Offset.zero;
   List<LoadedFile>? _results;
   bool _processing = false;
 
@@ -682,8 +688,33 @@ class _CropPageState extends State<CropPage> {
     if (!mounted) return;
     setState(() {
       if (list.isEmpty) _error = 'Нет файлов.';
-      else _files = list;
+      else {
+        _files = list;
+        _cropRect = const Rect.fromLTRB(0, 0, 1, 1);
+      }
     });
+  }
+
+  Rect _rectToPixels(Rect normRect, int imgW, int imgH) {
+    return Rect.fromLTRB(
+      (normRect.left * imgW).round().toDouble(),
+      (normRect.top * imgH).round().toDouble(),
+      (normRect.right * imgW).round().toDouble(),
+      (normRect.bottom * imgH).round().toDouble(),
+    );
+  }
+
+  Uint8List? _cropByRect(Uint8List bytes, Rect normRect) {
+    final decoded = ImageService.decode(bytes);
+    if (decoded == null) return null;
+    final w = decoded.width;
+    final h = decoded.height;
+    final r = _rectToPixels(normRect, w, h);
+    final x = r.left.round().clamp(0, w - 1);
+    final y = r.top.round().clamp(0, h - 1);
+    final rw = (r.width.round().clamp(1, w - x));
+    final rh = (r.height.round().clamp(1, h - y));
+    return ImageService.cropRect(bytes, x: x, y: y, width: rw, height: rh);
   }
 
   Future<void> _apply() async {
@@ -691,7 +722,7 @@ class _CropPageState extends State<CropPage> {
     setState(() => _processing = true);
     final results = <LoadedFile>[];
     for (final f in _files!) {
-      final out = ImageService.crop(f.bytes, widthPercent: _widthPercent, heightPercent: _heightPercent);
+      final out = _cropByRect(f.bytes, _cropRect);
       if (out != null) results.add((name: '${_baseName(f.name)}_cropped.${_extension(f.name)}', bytes: out));
     }
     if (!mounted) return;
@@ -706,6 +737,82 @@ class _CropPageState extends State<CropPage> {
     downloadAllAndNotify(context, _results!);
   }
 
+  void _resetCrop() {
+    setState(() => _cropRect = const Rect.fromLTRB(0, 0, 1, 1));
+  }
+
+  /// Определяет режим перетаскивания по точке в нормализованных координатах.
+  _CropDragMode _hitTest(Offset normPos) {
+    final l = _cropRect.left;
+    final t = _cropRect.top;
+    final r = _cropRect.right;
+    final b = _cropRect.bottom;
+    final margin = 0.08;
+    final inLeft = normPos.dx <= l + margin && normPos.dx >= l - margin;
+    final inRight = normPos.dx >= r - margin && normPos.dx <= r + margin;
+    final inTop = normPos.dy <= t + margin && normPos.dy >= t - margin;
+    final inBottom = normPos.dy >= b - margin && normPos.dy <= b + margin;
+    final inRect = normPos.dx >= l && normPos.dx <= r && normPos.dy >= t && normPos.dy <= b;
+    if (inLeft && inTop) return _CropDragMode.topLeft;
+    if (inRight && inTop) return _CropDragMode.topRight;
+    if (inLeft && inBottom) return _CropDragMode.bottomLeft;
+    if (inRight && inBottom) return _CropDragMode.bottomRight;
+    if (inLeft) return _CropDragMode.left;
+    if (inRight) return _CropDragMode.right;
+    if (inTop) return _CropDragMode.top;
+    if (inBottom) return _CropDragMode.bottom;
+    if (inRect) return _CropDragMode.move;
+    return _CropDragMode.none;
+  }
+
+  void _updateCropRect(Offset normDelta) {
+    double newLeft = _cropRect.left;
+    double newTop = _cropRect.top;
+    double newRight = _cropRect.right;
+    double newBottom = _cropRect.bottom;
+    const minSize = 0.05;
+    switch (_cropDragMode) {
+      case _CropDragMode.move:
+        newLeft = (_cropDragStartRect.left + normDelta.dx).clamp(0.0, 1.0 - minSize);
+        newTop = (_cropDragStartRect.top + normDelta.dy).clamp(0.0, 1.0 - minSize);
+        newRight = (_cropDragStartRect.right + normDelta.dx).clamp(minSize, 1.0);
+        newBottom = (_cropDragStartRect.bottom + normDelta.dy).clamp(minSize, 1.0);
+        if (newRight - newLeft < minSize || newBottom - newTop < minSize) return;
+        break;
+      case _CropDragMode.left:
+        newLeft = (_cropDragStartRect.left + normDelta.dx).clamp(0.0, _cropRect.right - minSize);
+        break;
+      case _CropDragMode.right:
+        newRight = (_cropDragStartRect.right + normDelta.dx).clamp(_cropRect.left + minSize, 1.0);
+        break;
+      case _CropDragMode.top:
+        newTop = (_cropDragStartRect.top + normDelta.dy).clamp(0.0, _cropRect.bottom - minSize);
+        break;
+      case _CropDragMode.bottom:
+        newBottom = (_cropDragStartRect.bottom + normDelta.dy).clamp(_cropRect.top + minSize, 1.0);
+        break;
+      case _CropDragMode.topLeft:
+        newLeft = (_cropDragStartRect.left + normDelta.dx).clamp(0.0, _cropRect.right - minSize);
+        newTop = (_cropDragStartRect.top + normDelta.dy).clamp(0.0, _cropRect.bottom - minSize);
+        break;
+      case _CropDragMode.topRight:
+        newRight = (_cropDragStartRect.right + normDelta.dx).clamp(_cropRect.left + minSize, 1.0);
+        newTop = (_cropDragStartRect.top + normDelta.dy).clamp(0.0, _cropRect.bottom - minSize);
+        break;
+      case _CropDragMode.bottomLeft:
+        newLeft = (_cropDragStartRect.left + normDelta.dx).clamp(0.0, _cropRect.right - minSize);
+        newBottom = (_cropDragStartRect.bottom + normDelta.dy).clamp(_cropRect.top + minSize, 1.0);
+        break;
+      case _CropDragMode.bottomRight:
+        newRight = (_cropDragStartRect.right + normDelta.dx).clamp(_cropRect.left + minSize, 1.0);
+        newBottom = (_cropDragStartRect.bottom + normDelta.dy).clamp(_cropRect.top + minSize, 1.0);
+        break;
+      case _CropDragMode.none:
+        return;
+    }
+    setState(() => _cropRect = Rect.fromLTRB(newLeft, newTop, newRight, newBottom));
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_error != null) return Scaffold(appBar: AppBar(title: const Text('Обрезать')), body: Center(child: Text(_error!)));
@@ -718,26 +825,134 @@ class _CropPageState extends State<CropPage> {
         onDownloadAll: _downloadAll,
       );
     }
-    final previewBytes = ImageService.crop(_files!.first.bytes, widthPercent: _widthPercent, heightPercent: _heightPercent) ?? _files!.first.bytes;
+    final decoded = ImageService.decode(_files!.first.bytes);
+    if (decoded == null) {
+      return buildActionLayout(
+        context,
+        title: 'Обрезать',
+        previewPanel: buildPreviewImage(_files!.first.bytes),
+        controlsPanel: const Text('Не удалось декодировать изображение.'),
+      );
+    }
+    final imgW = decoded.width.toDouble();
+    final imgH = decoded.height.toDouble();
+
+    Widget previewPanel = LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        if (size.width <= 0 || size.height <= 0) return buildPreviewImage(_files!.first.bytes);
+        final aspectImage = imgW / imgH;
+        final aspectBox = size.width / size.height;
+        double w, h;
+        if (aspectBox > aspectImage) {
+          h = size.height;
+          w = size.height * aspectImage;
+        } else {
+          w = size.width;
+          h = size.width / aspectImage;
+        }
+        final imageRect = Rect.fromLTWH((size.width - w) / 2, (size.height - h) / 2, w, h);
+        Offset localToNorm(Offset local) {
+          if (w <= 0 || h <= 0) return Offset.zero;
+          return Offset(
+            ((local.dx - imageRect.left) / w).clamp(0.0, 1.0),
+            ((local.dy - imageRect.top) / h).clamp(0.0, 1.0),
+          );
+        }
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Center(
+                child: Image.memory(_files!.first.bytes, fit: BoxFit.contain),
+              ),
+            ),
+            Positioned(
+              left: imageRect.left,
+              top: imageRect.top,
+              width: w,
+              height: h,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanStart: (d) {
+                  final norm = localToNorm(d.localPosition);
+                  if (norm.dx < 0 || norm.dx > 1 || norm.dy < 0 || norm.dy > 1) return;
+                  setState(() {
+                    _cropDragMode = _hitTest(norm);
+                    _cropDragStartRect = _cropRect;
+                    _cropDragStartLocal = d.localPosition;
+                  });
+                },
+                onPanUpdate: (d) {
+                  if (_cropDragMode == _CropDragMode.none) return;
+                  final curNorm = localToNorm(d.localPosition);
+                  final startNorm = localToNorm(_cropDragStartLocal);
+                  _updateCropRect(Offset(curNorm.dx - startNorm.dx, curNorm.dy - startNorm.dy));
+                },
+                onPanEnd: (_) {
+                  setState(() => _cropDragMode = _CropDragMode.none);
+                },
+                child: CustomPaint(
+                  size: Size(w, h),
+                  painter: _CropOverlayPainter(
+                    cropRect: _cropRect,
+                    borderColor: Colors.white,
+                    dimColor: Colors.black54,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
     return buildActionLayout(
       context,
       title: 'Обрезать',
-      previewPanel: buildPreviewImage(previewBytes),
+      previewPanel: previewPanel,
       controlsPanel: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Обрезка по центру (процент от размера):'),
-          Slider(value: _widthPercent.toDouble(), min: 10, max: 100, divisions: 9, label: 'Ширина $_widthPercent%', onChanged: (v) => setState(() => _widthPercent = v.round())),
-          Text('Ширина: $_widthPercent%'),
-          Slider(value: _heightPercent.toDouble(), min: 10, max: 100, divisions: 9, label: 'Высота $_heightPercent%', onChanged: (v) => setState(() => _heightPercent = v.round())),
-          Text('Высота: $_heightPercent%'),
+          const Text('Тяните прямоугольник на фото: углы и границы — изменить размер, внутри — сдвинуть область.', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+          const SizedBox(height: AppTheme.blockGap),
+          OutlinedButton.icon(
+            onPressed: _resetCrop,
+            icon: const Icon(Icons.crop_free_rounded, size: 20),
+            label: const Text('Сбросить область'),
+          ),
           const SizedBox(height: AppTheme.sectionGap),
           FilledButton(onPressed: _processing ? null : _apply, child: _processing ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Применить')),
         ],
       ),
     );
   }
+}
+
+class _CropOverlayPainter extends CustomPainter {
+  _CropOverlayPainter({required this.cropRect, required this.borderColor, required this.dimColor});
+  final Rect cropRect;
+  final Color borderColor;
+  final Color dimColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final left = cropRect.left * w;
+    final top = cropRect.top * h;
+    final right = cropRect.right * w;
+    final bottom = cropRect.bottom * h;
+    final outer = Path()..addRect(Rect.fromLTWH(0, 0, w, h));
+    final inner = Path()..addRect(Rect.fromLTWH(left, top, right - left, bottom - top));
+    final dim = Path.combine(PathOperation.difference, outer, inner);
+    canvas.drawPath(dim, Paint()..color = dimColor..style = PaintingStyle.fill);
+    canvas.drawRect(Rect.fromLTWH(left, top, right - left, bottom - top), Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 2);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CropOverlayPainter old) => old.cropRect != cropRect;
 }
 
 /// Экран фильтров: яркость, контраст, ч/б, сепия, размытие — затем «Применить» и скачивание.

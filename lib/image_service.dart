@@ -94,6 +94,26 @@ class ImageService {
     return _encodeSameFormat(decoded, cropped, bytes);
   }
 
+  /// Обрезка по прямоугольнику в пикселях: [x], [y] — левый верхний угол, [width], [height] — размер.
+  static Uint8List? cropRect(
+    Uint8List bytes, {
+    required int x,
+    required int y,
+    required int width,
+    required int height,
+  }) {
+    final decoded = decode(bytes);
+    if (decoded == null) return null;
+    final w = decoded.width;
+    final h = decoded.height;
+    final x1 = x.clamp(0, w - 1);
+    final y1 = y.clamp(0, h - 1);
+    final cw = width.clamp(1, w - x1);
+    final ch = height.clamp(1, h - y1);
+    final cropped = img.copyCrop(decoded, x: x1, y: y1, width: cw, height: ch);
+    return _encodeSameFormat(decoded, cropped, bytes);
+  }
+
   /// Яркость и контраст: [brightness] и [contrast] 1.0 = без изменений.
   static Uint8List? brightnessContrast(
     Uint8List bytes, {
