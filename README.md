@@ -1,72 +1,61 @@
 # Image Compressor (converter-web)
 
-Веб-приложение для сжатия изображений, собранное на Flutter для платформы Web.
-
-## О проекте
-
-**Image Compressor** — это PWA (Progressive Web App), которая позволяет сжимать изображения прямо в браузере. Приложение работает офлайн после первой загрузки благодаря Service Worker.
+PWA для сжатия и конвертации изображений в браузере. Работает офлайн после первой загрузки.
 
 - **Версия:** 1.0.0  
-- **Платформа:** Flutter Web  
-- **Режим отображения:** standalone (как отдельное приложение)
+- **Платформа:** Flutter Web
 
 ## Запуск локально
 
-Этот каталог содержит готовую сборку веб-приложения (результат `flutter build web`). Чтобы открыть приложение:
-
-### Вариант 1: Локальный HTTP-сервер
-
-Используйте любой статический сервер из корня этой папки:
+Сервер нужно запускать из **родительской папки** (например, из `Documents`), чтобы путь `/converter-web/` был доступен:
 
 ```bash
-# Python 3
+cd /path/to/parent
 python3 -m http.server 8080
-
-# или npx (Node.js)
-npx serve -p 8080
 ```
 
-Затем откройте в браузере: `http://localhost:8080/converter-web/`  
-(важно указать путь `/converter-web/`, так как в `index.html` задан `<base href="/converter-web/">`).
+Открой в браузере: **http://localhost:8080/converter-web/**
 
-### Вариант 2: Без базового пути
+Если сервер запускаешь из корня проекта и открываешь `http://localhost:8080/`, в `index.html` замени `<base href="/converter-web/">` на `<base href="/">`.
 
-Если сервер отдаёт файлы из корня (например, `http://localhost:8080/`), в `index.html` нужно заменить:
+## Сборка из исходников
 
-```html
-<base href="/converter-web/">
+Исходный код Flutter: `lib/main.dart`, `lib/home_page.dart`. Шаблон веб-оболочки: `web/index.html`.
+
+```bash
+flutter pub get
+flutter build web
 ```
 
-на:
+Результат сборки — в `build/web/`. Чтобы обновить сайт в корне проекта, скопируй содержимое `build/web/` в корень.
 
-```html
-<base href="/">
+Разработка с горячей перезагрузкой:
+
+```bash
+flutter pub get
+flutter run -d chrome
 ```
 
-## Структура сборки
+## Структура проекта
 
-| Каталог / файл        | Назначение |
-|-----------------------|------------|
-| `index.html`          | Точка входа, загрузка Flutter |
-| `main.dart.js`        | Скомпилированный код приложения |
-| `flutter.js`, `canvaskit/` | Движок рендеринга Flutter |
-| `manifest.json`       | Манифест PWA (название, иконки, тема) |
-| `flutter_service_worker.js` | Service Worker для офлайн-режима и кэширования |
-| `assets/`             | Шрифты, шейдеры и прочие ассеты |
-| `icons/`              | Иконки приложения (192×192, 512×512) |
+| Путь | Назначение |
+|------|------------|
+| `index.html` | Точка входа, экран загрузки |
+| `main.dart.js` | Скомпилированное приложение |
+| `flutter.js`, `flutter_bootstrap.js` | Загрузчик Flutter |
+| `canvaskit/` | Движок рендеринга (локальный) |
+| `manifest.json` | PWA: название, иконки, тема |
+| `flutter_service_worker.js` | Офлайн и кэш |
+| `lib/` | Исходный код Dart |
+| `web/index.html` | Шаблон для `flutter build web` |
+
+Артефакты сборки (`build/`, `.dart_tool/`, `.last_build_id` и др.) перечислены в `.gitignore`.
 
 ## Деплой
 
-Содержимое этого каталога можно развернуть на любом хостинге статики (GitHub Pages, Netlify, Firebase Hosting, свой сервер и т.д.). Убедитесь, что:
-
-1. Для корня сайта в `index.html` указан корректный `<base href="...">`.
-2. Сервер отдаёт `index.html` для запросов к путям приложения (SPA/Flutter routing), если используете не корень домена.
+Размести содержимое корня (или `build/web/` после сборки) на любом хостинге статики. Для подпути укажи нужный `<base href="...">` в `index.html`.
 
 ## Требования
 
-- Современный браузер с поддержкой WebAssembly (Chrome, Firefox, Safari, Edge).
-- Для локального запуска — Python 3 или Node.js (при использовании `serve`).
-
-## Лицензия
-
-Стандартная лицензия Flutter-проекта. Тексты лицензий зависимостей — в `assets/NOTICES`.
+- Браузер с поддержкой WebAssembly (Chrome, Firefox, Safari, Edge).
+- Для локального запуска — Python 3 или Node.js.
