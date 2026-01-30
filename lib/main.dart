@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_compressor/app_theme.dart';
 import 'package:image_compressor/home_page.dart';
 
 void main() {
@@ -18,19 +19,19 @@ class ImageCompressorApp extends StatelessWidget {
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.dark(
-          primary: const Color(0xFF38bdf8),
-          onPrimary: const Color(0xFF0f172a),
-          surface: const Color(0xFF0f172a),
-          onSurface: const Color(0xFFf1f5f9),
-          surfaceContainerHighest: const Color(0xFF1e293b),
-          outline: const Color(0xFF475569),
+          primary: AppTheme.accent,
+          onPrimary: AppTheme.background,
+          surface: AppTheme.background,
+          onSurface: AppTheme.textPrimary,
+          surfaceContainerHighest: AppTheme.surface,
+          outline: AppTheme.outline,
         ),
-        scaffoldBackgroundColor: const Color(0xFF0f172a),
+        scaffoldBackgroundColor: AppTheme.background,
         appBarTheme: AppBarTheme(
           elevation: 0,
           centerTitle: true,
-          backgroundColor: const Color(0xFF0f172a),
-          foregroundColor: const Color(0xFFf1f5f9),
+          backgroundColor: AppTheme.background,
+          foregroundColor: AppTheme.textPrimary,
           titleTextStyle: GoogleFonts.outfit(
             fontSize: 20,
             fontWeight: FontWeight.w600,
@@ -40,16 +41,23 @@ class ImageCompressorApp extends StatelessWidget {
         textTheme: GoogleFonts.outfitTextTheme(
           ThemeData.dark().textTheme.copyWith(
                 headlineMedium: const TextStyle(
-                  color: Color(0xFFf1f5f9),
+                  color: AppTheme.textPrimary,
                   fontSize: 28,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.02,
                 ),
                 bodyLarge: const TextStyle(
-                  color: Color(0xFF94a3b8),
+                  color: AppTheme.textSecondary,
                   fontSize: 16,
                 ),
               ),
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppTheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusSnackBar),
+          ),
         ),
       ),
       home: const HomePage(),

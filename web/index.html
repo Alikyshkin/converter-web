@@ -13,13 +13,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    /* Тема приложения (AppTheme): те же цвета и радиусы, что и во Flutter */
     :root {
       --bg: #0f172a;
-      --bg-soft: #1e293b;
+      --surface: #1e293b;
       --accent: #38bdf8;
       --accent-dim: rgba(56, 189, 248, 0.15);
       --text: #f1f5f9;
       --text-muted: #94a3b8;
+      --radius-card: 16px;
+      --page-padding: 24px;
     }
     *, *::before, *::after { box-sizing: border-box; }
     html { height: 100%; }
@@ -54,7 +57,7 @@
       pointer-events: none;
     }
     .loading-brand {
-      font-size: 1.5rem;
+      font-size: 1.75rem;
       font-weight: 600;
       letter-spacing: -0.02em;
       color: var(--text);
@@ -69,8 +72,8 @@
     .loading-bar {
       width: 120px;
       height: 3px;
-      background: var(--bg-soft);
-      border-radius: 3px;
+      background: var(--surface);
+      border-radius: 12px;
       overflow: hidden;
     }
     .loading-bar::after {
@@ -79,7 +82,7 @@
       height: 100%;
       width: 40%;
       background: var(--accent);
-      border-radius: 3px;
+      border-radius: 12px;
       animation: loading 1s ease-in-out infinite;
     }
     @keyframes loading {
