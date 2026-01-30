@@ -7,16 +7,14 @@ PWA для сжатия и конвертации изображений в бр
 
 ## Запуск локально
 
-Сервер нужно запускать из **родительской папки** (например, из `Documents`), чтобы путь `/converter-web/` был доступен:
+Запусти сервер из **корня проекта**:
 
 ```bash
-cd /path/to/parent
+cd /path/to/converter-web
 python3 -m http.server 8080
 ```
 
-Открой в браузере: **http://localhost:8080/converter-web/**
-
-Если сервер запускаешь из корня проекта и открываешь `http://localhost:8080/`, в `index.html` замени `<base href="/converter-web/">` на `<base href="/">`.
+Открой в браузере: **http://localhost:8080/**
 
 ## Сборка из исходников
 

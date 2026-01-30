@@ -13,7 +13,7 @@ class HomePage extends StatelessWidget {
             radius: 1.2,
             colors: [
               Color(0x2638bdf8),
-              Color(0x0f172a),
+              Color(0xFF0f172a),
             ],
             stops: [0.0, 0.6],
           ),
