@@ -17,10 +17,10 @@ class ImageCompressorApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.dark(
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.light(
           primary: AppTheme.accent,
-          onPrimary: AppTheme.background,
+          onPrimary: Colors.white,
           surface: AppTheme.background,
           onSurface: AppTheme.textPrimary,
           surfaceContainerHighest: AppTheme.surface,
@@ -32,29 +32,42 @@ class ImageCompressorApp extends StatelessWidget {
           centerTitle: true,
           backgroundColor: AppTheme.background,
           foregroundColor: AppTheme.textPrimary,
-          titleTextStyle: GoogleFonts.outfit(
+          titleTextStyle: GoogleFonts.inter(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            letterSpacing: -0.02,
+            color: AppTheme.textPrimary,
           ),
         ),
-        textTheme: GoogleFonts.outfitTextTheme(
-          ThemeData.dark().textTheme.copyWith(
+        textTheme: GoogleFonts.interTextTheme(
+          ThemeData.light().textTheme.copyWith(
                 headlineMedium: const TextStyle(
                   color: AppTheme.textPrimary,
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: -0.02,
+                  height: 1.3,
+                  letterSpacing: 0,
                 ),
                 bodyLarge: const TextStyle(
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.textPrimary,
                   fontSize: 16,
+                  height: 1.4,
+                  fontWeight: FontWeight.w400,
+                ),
+                bodyMedium: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 15,
+                  height: 1.4,
                 ),
               ),
         ),
         snackBarTheme: SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: AppTheme.surface,
+          backgroundColor: AppTheme.surfaceVariant,
+          contentTextStyle: const TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 15,
+            height: 1.4,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusSnackBar),
           ),
