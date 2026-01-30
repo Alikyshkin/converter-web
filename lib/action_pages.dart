@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart' show decodeImageFromList;
 import 'package:flutter_dropzone/flutter_dropzone.dart';
 import 'package:image_compressor/app_theme.dart';
 import 'package:image_compressor/download_helper.dart';
@@ -1661,4 +1663,367 @@ class _RemoveBackgroundPageState extends State<RemoveBackgroundPage> {
       ),
     );
   }
+}
+
+/// Один штрих: цвет, толщина и точки в нормализованных координатах (0–1).
+class _DrawStroke {
+  _DrawStroke({required this.color, required this.width});
+  final Color color;
+  final double width;
+  final List<Offset> points = [];
+}
+
+/// Экран рисования на фото: загрузка одного изображения, рисование поверх, сохранение в PNG.
+class DrawOnPhotoPage extends StatefulWidget {
+  const DrawOnPhotoPage({super.key, required this.args});
+
+  final ActionPageArgs args;
+
+  @override
+  State<DrawOnPhotoPage> createState() => _DrawOnPhotoPageState();
+}
+
+class _DrawOnPhotoPageState extends State<DrawOnPhotoPage> {
+  String? _error;
+  Uint8List? _imageBytes;
+  String _fileName = '';
+  ui.Image? _uiImage;
+  int _imageWidth = 0;
+  int _imageHeight = 0;
+  final List<_DrawStroke> _strokes = [];
+  _DrawStroke? _currentStroke;
+  Color _selectedColor = Colors.red;
+  double _strokeWidth = 4.0;
+  bool _saving = false;
+
+  static const _colors = [
+    Colors.red,
+    Colors.blue,
+    Colors.green,
+    Colors.black,
+    Colors.white,
+    Colors.yellow,
+    Colors.orange,
+    Colors.purple,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final list = await loadFileBytes(
+      dropped: widget.args.dropped,
+      picked: widget.args.picked,
+      dropzoneController: widget.args.dropzoneController,
+    );
+    if (!mounted) return;
+    if (list.isEmpty) {
+      setState(() => _error = 'Нет файлов.');
+      return;
+    }
+    final first = list.first;
+    _imageBytes = first.bytes;
+    _fileName = first.name;
+    final img = await decodeImageFromList(first.bytes);
+    if (!mounted) return;
+    setState(() {
+      _uiImage = img;
+      _imageWidth = img.width;
+      _imageHeight = img.height;
+    });
+  }
+
+  Rect _imageRect(Size size) {
+    if (_imageWidth <= 0 || _imageHeight <= 0) return Rect.zero;
+    final aspectImage = _imageWidth / _imageHeight;
+    final aspectBox = size.width / size.height;
+    double w, h;
+    if (aspectBox > aspectImage) {
+      h = size.height;
+      w = size.height * aspectImage;
+    } else {
+      w = size.width;
+      h = size.width / aspectImage;
+    }
+    return Rect.fromLTWH((size.width - w) / 2, (size.height - h) / 2, w, h);
+  }
+
+  Offset _localToNormalized(Offset local, Rect rect) {
+    if (rect.width <= 0 || rect.height <= 0) return Offset.zero;
+    return Offset(
+      ((local.dx - rect.left) / rect.width).clamp(0.0, 1.0),
+      ((local.dy - rect.top) / rect.height).clamp(0.0, 1.0),
+    );
+  }
+
+  void _onPanStart(DragStartDetails details, Rect rect) {
+    final norm = _localToNormalized(details.localPosition, rect);
+    setState(() {
+      _currentStroke = _DrawStroke(color: _selectedColor, width: _strokeWidth);
+      _currentStroke!.points.add(norm);
+    });
+  }
+
+  void _onPanUpdate(DragUpdateDetails details, Rect rect) {
+    if (_currentStroke == null) return;
+    final norm = _localToNormalized(details.localPosition, rect);
+    setState(() => _currentStroke!.points.add(norm));
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (_currentStroke != null && _currentStroke!.points.length >= 2) {
+      setState(() {
+        _strokes.add(_currentStroke!);
+        _currentStroke = null;
+      });
+    } else {
+      setState(() => _currentStroke = null);
+    }
+  }
+
+  void _undo() {
+    if (_strokes.isEmpty) return;
+    setState(() => _strokes.removeLast());
+  }
+
+  void _clear() {
+    setState(() {
+      _strokes.clear();
+      _currentStroke = null;
+    });
+  }
+
+  Future<void> _save() async {
+    if (_uiImage == null || _imageBytes == null) return;
+    setState(() => _saving = true);
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    final w = _imageWidth.toDouble();
+    final h = _imageHeight.toDouble();
+    canvas.drawImageRect(
+      _uiImage!,
+      Rect.fromLTWH(0, 0, w, h),
+      Rect.fromLTWH(0, 0, w, h),
+      Paint(),
+    );
+    for (final stroke in _strokes) {
+      if (stroke.points.length < 2) continue;
+      final paint = Paint()
+        ..color = stroke.color
+        ..strokeWidth = stroke.width * (w + h) / 200
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+      for (var i = 0; i < stroke.points.length - 1; i++) {
+        final p1 = Offset(stroke.points[i].dx * w, stroke.points[i].dy * h);
+        final p2 = Offset(stroke.points[i + 1].dx * w, stroke.points[i + 1].dy * h);
+        canvas.drawLine(p1, p2, paint);
+      }
+    }
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(_imageWidth, _imageHeight);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (byteData != null) {
+      final bytes = Uint8List.view(byteData.buffer);
+      final name = '${_baseName(_fileName)}_drawn.png';
+      downloadBytes(bytes, name);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Изображение сохранено')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Рисовать')),
+        body: Center(child: Text(_error!)),
+      );
+    }
+    if (_uiImage == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Рисовать')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Рисовать на фото'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.undo_rounded),
+            onPressed: _strokes.isEmpty ? null : _undo,
+            tooltip: 'Отменить',
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded),
+            onPressed: (_strokes.isEmpty && _currentStroke == null) ? null : _clear,
+            tooltip: 'Очистить',
+          ),
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Сохранить'),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.pagePadding, vertical: 8),
+            color: AppTheme.surfaceVariant,
+            child: Row(
+              children: [
+                const Text('Цвет:', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 8),
+                Wrap(
+                  spacing: 6,
+                  children: _colors.map((c) {
+                    final selected = _selectedColor.value == c.value;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedColor = c),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: selected ? AppTheme.textPrimary : AppTheme.outline,
+                            width: selected ? 3 : 1,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(width: 16),
+                const Text('Толщина:', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 100,
+                  child: Slider(
+                    value: _strokeWidth,
+                    min: 1,
+                    max: 20,
+                    onChanged: (v) => setState(() => _strokeWidth = v),
+                  ),
+                ),
+                Text('${_strokeWidth.round()}', style: const TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final rect = _imageRect(constraints.biggest);
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned(
+                      left: rect.left,
+                      top: rect.top,
+                      width: rect.width,
+                      height: rect.height,
+                      child: CustomPaint(
+                        size: rect.size,
+                        painter: _ImagePainter(_uiImage!, rect),
+                      ),
+                    ),
+                    Positioned(
+                      left: rect.left,
+                      top: rect.top,
+                      width: rect.width,
+                      height: rect.height,
+                      child: GestureDetector(
+                        onPanStart: (d) => _onPanStart(d, rect),
+                        onPanUpdate: (d) => _onPanUpdate(d, rect),
+                        onPanEnd: (_) => _onPanEnd(_),
+                        child: CustomPaint(
+                          size: rect.size,
+                          painter: _StrokesPainter(
+                            rect: rect,
+                            strokes: _strokes,
+                            currentStroke: _currentStroke,
+                            imageWidth: _imageWidth,
+                            imageHeight: _imageHeight,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImagePainter extends CustomPainter {
+  _ImagePainter(this.image, this.dstRect);
+  final ui.Image image;
+  final Rect dstRect;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint(),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ImagePainter old) => old.image != image || old.dstRect != dstRect;
+}
+
+class _StrokesPainter extends CustomPainter {
+  _StrokesPainter({
+    required this.rect,
+    required this.strokes,
+    this.currentStroke,
+    required this.imageWidth,
+    required this.imageHeight,
+  });
+  final Rect rect;
+  final List<_DrawStroke> strokes;
+  final _DrawStroke? currentStroke;
+  final int imageWidth;
+  final int imageHeight;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    void drawStroke(_DrawStroke stroke) {
+      if (stroke.points.length < 2) return;
+      final paint = Paint()
+        ..color = stroke.color
+        ..strokeWidth = stroke.width * (size.width + size.height) / 200
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+      for (var i = 0; i < stroke.points.length - 1; i++) {
+        final p1 = Offset(stroke.points[i].dx * size.width, stroke.points[i].dy * size.height);
+        final p2 = Offset(stroke.points[i + 1].dx * size.width, stroke.points[i + 1].dy * size.height);
+        canvas.drawLine(p1, p2, paint);
+      }
+    }
+    for (final s in strokes) drawStroke(s);
+    if (currentStroke != null) drawStroke(currentStroke!);
+  }
+
+  @override
+  bool shouldRepaint(covariant _StrokesPainter old) =>
+      old.strokes != strokes || old.currentStroke != currentStroke;
 }

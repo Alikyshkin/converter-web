@@ -314,6 +314,18 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
+            const SizedBox(height: AppTheme.blockGap),
+            Row(
+              children: [
+                Expanded(
+                  child: _ActionButton(
+                    icon: Icons.draw_rounded,
+                    label: 'Рисовать',
+                    onTap: () => _onDrawOnPhoto(context, dropped: _droppedFiles, picked: _pickedFiles),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             TextButton(
               onPressed: _clearUpload,
@@ -720,6 +732,24 @@ class _HomePageState extends State<HomePage> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => FaceBlurPage(
+          args: ActionPageArgs(
+            dropped: dropped,
+            picked: picked,
+            dropzoneController: _dropzoneController,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _onDrawOnPhoto(
+    BuildContext context, {
+    List<DropzoneFileInterface>? dropped,
+    List<PlatformFile>? picked,
+  }) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DrawOnPhotoPage(
           args: ActionPageArgs(
             dropped: dropped,
             picked: picked,
